@@ -19,7 +19,7 @@ function App() {
           100, 50,
           350, 250
         ],
-        image: `https://source.unsplash.com/random/350x250`
+        image: `https://source.unsplash.com/random/1600x900/?cat`
       },
       {
         title: 'part 2',
@@ -27,7 +27,7 @@ function App() {
           500, 500,
           400, 250
         ],
-        image: `https://source.unsplash.com/random/400x300`
+        image: `https://source.unsplash.com/random/400x300/?dog`
       },
       {
         title: 'part 3',
@@ -35,7 +35,7 @@ function App() {
           700, 250,
           300, 300
         ],
-        image: `https://source.unsplash.com/random/400x300`
+        image: `https://source.unsplash.com/random/500x500/?panda`
       }
     ]
   }

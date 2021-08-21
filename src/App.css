@@ -26,3 +26,37 @@
 .canvas-container .zoom {
   width: 20%;
 }
+
+.info {
+  text-align: left;
+}
+
+code, kbd, pre {
+  font-family: monospace;
+}
+
+pre > code {
+  white-space: pre;
+  box-decoration-break: clone;
+  border-radius: .2rem;
+}
+
+.ui.basic.modal {
+  border: 1px solid rgba(255, 255, 255, .3);
+}
+
+.component-modal img {
+  cursor: zoom-out;
+}
+
+.component-detail {
+  width: 100%;
+  margin: auto;
+}
+
+.component-detail img {
+  display: block;
+  max-width: 100%;
+  width: auto;
+  margin: auto;
+}

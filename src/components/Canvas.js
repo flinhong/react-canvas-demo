@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { Modal } from 'semantic-ui-react';
 import color from '../utils/randomColor';
 
 const Canvas = props => {
@@ -11,6 +12,7 @@ const Canvas = props => {
 
   const [component, setComponent] = useState({});
   const [rectHover, setRectHover] = useState(false);
+  const [openModal, setOpenModal] = useState(false);
 
   const zoom = (e) => {
     // get real mouse position relative to canvas layout
@@ -33,8 +35,13 @@ const Canvas = props => {
       setComponent(currentRect[0]);
       setRectHover(true);
     } else {
+      setComponent({});
       setRectHover(false);
     }
+  }
+
+  const handleClick = () => {
+    if (component.title) setOpenModal(true);
   }
 
   // just for regular rectangle without tilt
@@ -46,7 +53,7 @@ const Canvas = props => {
     }
   }
 
-  const drawRect = (ctx, bounding, lineWidth, color) => {
+  const drawRect = (ctx, bounding, lineWidth, color, text) => {
     const x = bounding[0];
     const y = bounding[1];
     const w = bounding[2];
@@ -56,6 +63,10 @@ const Canvas = props => {
     ctx.lineWidth = lineWidth;
     ctx.strokeStyle = color;
     ctx.stroke(rect);
+
+    ctx.font=`14px monospace`; // css font property
+    ctx.fillStyle=color; // text color
+    ctx.fillText(text, x, y - 7); // move a little above rectangle
   }
 
   useEffect(() => {
@@ -68,30 +79,58 @@ const Canvas = props => {
         ctx.drawImage(backgroundImage, 0, 0) // draw background image first
         backgroundImage.style.display = 'none';
 
-        components.forEach(part => {
-          const { boundingBox } = part;
-          drawRect(ctx, boundingBox, 2, color());
+        components.forEach(component => {
+          const { boundingBox, title } = component;
+          drawRect(ctx, boundingBox, 2, color(), title);
         })
       }
       backgroundImage.src = bgImage;
     }
   }, [bgImage, components])
 
-  useEffect(() => {
-    if (component.title) {
-      console.log('select: ', component.title);
-    }
-  }, [component])
+  // useEffect(() => {
+  //   if (component.title) {
+  //     console.log('select: ', component.title);
+  //   }
+  // }, [component])
 
   return (
+    <>
     <div className={`canvas-container${rectHover ? ' component-on-hover': ''}`}>
       <div className='main'>
-        <canvas ref={canvasRef} height={height} width={width} onMouseMove={zoom} />
+        <canvas ref={canvasRef} height={height} width={width} onMouseMove={zoom} onClick={handleClick} />
       </div>
       <div className='zoom'>
         <canvas ref={zoomRef} width={300} height={300} />
+        <div className='info'>
+          {component.title &&
+            <pre>
+              hover on: 
+              <code>{JSON.stringify(component, null, 2)}</code>
+            </pre>
+          }
+        </div>
       </div>
     </div>
+
+    <Modal
+      basic
+      size='large'
+      closeIcon
+      onClose={() => setOpenModal(false)}
+      onOpen={() => setOpenModal(true)}
+      open={openModal}
+      onClick={() => setOpenModal(false)}
+      className='component-modal'
+    >
+      <Modal.Header>{component.title}</Modal.Header>
+      <Modal.Content image>
+        <div className='component-detail'>
+          <img src={component.image} alt={component.title} />
+        </div>
+      </Modal.Content>
+    </Modal>
+    </>
   )
 }
 
