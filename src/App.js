@@ -65,7 +65,7 @@ function App() {
           610, 600,
           1700, 270
         ],
-        defects: demo_defects(3)
+        defects: demo_defects(6)
       }
     ]
   }
