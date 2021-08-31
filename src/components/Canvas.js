@@ -8,6 +8,7 @@ const Canvas = props => {
   const { width, height, image:bgImage } = background;
 
   const bgCanvasRef = useRef(null);
+  const bgOriginCanvasRef = useRef(null);
   const paintCanvasRef = useRef(null);
   const zoomRef = useRef(null);
 
@@ -27,8 +28,9 @@ const Canvas = props => {
     const zoomCtx = zoomRef.current.getContext('2d');
 
     zoomCtx.imageSmoothingEnabled = true;
-    // scale mouse position (+- 10 px) (20*20 px) to 300*300 px in zoom div
-    zoomCtx.drawImage(bgCanvasRef.current, Math.abs(x - 10), Math.abs(y - 10), 20, 20, 0, 0, 300, 300);
+    // scale mouse position (+- 15 px) (30*30 px) to 300*300 px in zoom div
+    const px = 15;
+    zoomCtx.drawImage(bgOriginCanvasRef.current, Math.abs(x - px) / scale, Math.abs(y - px) / scale, px*2 / scale, px*2 / scale, 0, 0, 300, 300);
 
     const currentRect = components.filter((component) => {
       return isMouseInRect(x, y, component.boundingBox)
@@ -165,9 +167,13 @@ const Canvas = props => {
       // start drawing
       const backgroundImage = new Image();
       backgroundImage.onload = function() {
-        backgroundImage.style.display = 'none';
+        // backgroundImage.style.display = 'none';
         ctx.beginPath();
-        ctx.drawImage(backgroundImage, 0, 0) // draw background image first
+        ctx.drawImage(backgroundImage, 0, 0); // draw background image first
+
+        const bgOriginCtx = bgOriginCanvasRef.current.getContext('2d');
+        bgOriginCtx.beginPath();
+        bgOriginCtx.drawImage(backgroundImage, 0, 0);
       }
       backgroundImage.src = bgImage;
     }
@@ -202,6 +208,7 @@ const Canvas = props => {
           <>
             <canvas ref={bgCanvasRef} width={canvasSize.width} height={canvasSize.height} style={{ zIndex: '-10' }} />
             <canvas ref={paintCanvasRef} width={canvasSize.width} height={canvasSize.height} style={{ zIndex: '10' }} onMouseMove={zoom} />
+            <canvas ref={bgOriginCanvasRef} width={width} height={height} style={{ zIndex: '-20', display: 'none' }} />
           </>
         }
       </div>
