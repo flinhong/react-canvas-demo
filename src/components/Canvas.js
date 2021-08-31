@@ -1,104 +1,209 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Modal } from 'semantic-ui-react';
 import color from '../utils/randomColor';
 
 const Canvas = props => {
+  const CANVAS_DISPLAY_WIDTH = 1200;
 
   const { background, components } = props.data;
   const { width, height, image:bgImage } = background;
 
-  const canvasRef = useRef(null);
+  const bgCanvasRef = useRef(null);
+  const paintCanvasRef = useRef(null);
   const zoomRef = useRef(null);
 
+  const [scale, setScale] = useState(1.0);
+  const [canvasSize, setCanvasSize] = useState({ width:0, height:0 });
+  const [paintCtx, setPaintCtx] = useState(null);
   const [component, setComponent] = useState({});
   const [rectHover, setRectHover] = useState(false);
-  const [openModal, setOpenModal] = useState(false);
 
   const zoom = (e) => {
     // get real mouse position relative to canvas layout
-    const rect = canvasRef.current.getBoundingClientRect()
-    const x = (e.clientX - rect.left) / (rect.right - rect.left) * width;
-    const y = (e.clientY - rect.top) / (rect.bottom - rect.top) * height;
+    const rect = bgCanvasRef.current.getBoundingClientRect()
+    const x = Math.floor((e.clientX - rect.left) / (rect.right - rect.left) * canvasSize.width);
+    const y = Math.floor((e.clientY - rect.top) / (rect.bottom - rect.top) * canvasSize.height);
     
     // console.log("x&y: ", `${x} & ${y}`);
     const zoomCtx = zoomRef.current.getContext('2d');
 
     zoomCtx.imageSmoothingEnabled = true;
     // scale mouse position (+- 10 px) (20*20 px) to 300*300 px in zoom div
-    zoomCtx.drawImage(canvasRef.current, Math.abs(x - 10), Math.abs(y - 10), 20, 20, 0, 0, 300, 300);
+    zoomCtx.drawImage(bgCanvasRef.current, Math.abs(x - 10), Math.abs(y - 10), 20, 20, 0, 0, 300, 300);
 
     const currentRect = components.filter((component) => {
       return isMouseInRect(x, y, component.boundingBox)
     });
     
     if (currentRect.length > 0) {
-      setComponent(currentRect[0]);
+      setComponent(currentRect[0]); // TODO: further calc size
       setRectHover(true);
+      if (paintCtx !== null) drawComponents(paintCtx, currentRect[0]);
     } else {
       setComponent({});
       setRectHover(false);
+      if (paintCtx !== null) drawComponents(paintCtx, null);
     }
-  }
-
-  const handleClick = () => {
-    if (component.title) setOpenModal(true);
   }
 
   // just for regular rectangle without tilt
   const isMouseInRect = (x, y, bounding) => {
-    if (x >= bounding[0] && x <= bounding[0] + bounding[2] && y >= bounding[1] && y <= bounding[1] + bounding[3] ) {
-      return true
+    const rect = newRect(bounding, true);
+    const ctx = bgCanvasRef.current.getContext('2d');
+    return ctx.isPointInPath(rect, x, y);
+  }
+
+  const newRect = (bounding, need2DPath) => {
+    const x = Math.floor(bounding[0] / scale);
+    const y = Math.floor(bounding[1] / scale);
+    const w = bounding[2];
+    const h = bounding[3];
+    if (need2DPath) {
+      const rect = new Path2D();
+      rect.rect(x, y, w, h);
+      return rect;
     } else {
-      return false
+      const rect = { x, y, w, h };
+      return rect;
     }
   }
 
-  const drawRect = (ctx, bounding, lineWidth, color, text) => {
-    const x = bounding[0];
-    const y = bounding[1];
-    const w = bounding[2];
-    const h = bounding[3];
-    const rect = new Path2D();
-    rect.rect(x, y, w, h);
-    ctx.lineWidth = lineWidth;
-    ctx.strokeStyle = color;
-    ctx.stroke(rect);
+  const drawRect = (paintCtx, boundingBox, lineWidth, color, text) => {
+    console.log('drawing...')
+    const rect = newRect(boundingBox);
+    const { x, y, w, h } = rect;
+    paintCtx.beginPath();
+    paintCtx.lineWidth = lineWidth;
+    paintCtx.strokeStyle = color;
+    paintCtx.clearRect(x, y, w, h);
+    paintCtx.strokeRect(x, y, w, h);
 
-    ctx.font=`14px monospace`; // css font property
-    ctx.fillStyle=color; // text color
-    ctx.fillText(text, x, y - 7); // move a little above rectangle
+    paintCtx.font=`${14/scale}px monospace`; // css font property
+    paintCtx.fillStyle=color; // text color
+    paintCtx.fillText(text, x, y - 14); // move a little above rectangle
+  }
+
+  const moveDgr = (startDgr, moveDgr, radius, x0, y0, box) => {
+    const num2rad = (n) => {
+      return n/180 * Math.PI;
+    }
+    const rad = num2rad(startDgr - moveDgr);
+    const newX = x0 + radius * Math.cos(rad);
+    const newY = y0 + (radius - radius * Math.sin(rad));
+  
+    box.x = newX - box.w/2;
+    box.y = newY - box.h/2;
+  }
+
+  const drawSubDefects = (paintCtx, component) => {
+    const { boundingBox, defects } = component;
+    const {x, y, w, h} = newRect(boundingBox);
+    const centerX = x + w / 2;
+    const centerY = y + h / 2;
+    // const radius = Math.floor(Math.sqrt(w*w + h*h));
+    const radius = w > h ? h : w;
+    let dgrStep = 360 / defects.length;
+
+    let x0 = centerX;
+    let y0 = centerY - radius;
+
+    defects.forEach((defect, index) => {
+      const { width, height, title, image } = defect;
+      const r = Math.sqrt(width*width, height*height) + radius;
+      if (index === 0) y0 = y0 - r*scale - width/2;
+      const box = {
+        x: x0 - width / 2,
+        y: y0 - height / 2,
+        w: width,
+        h: height
+      }
+      const dgr = dgrStep * index;
+      moveDgr(90, dgr, r, x0, y0, box);
+      paintCtx.beginPath();
+      // paintCtx.strokeStyle = 'green';
+      // paintCtx.strokeRect(box.x, box.y, box.w, box.h);
+      const img = new Image();
+      img.onload = () => {
+        paintCtx.beginPath();
+        paintCtx.drawImage(img, box.x, box.y, box.w, box.h);
+        paintCtx.strokeStyle = 'green';
+        paintCtx.strokeRect(box.x, box.y, box.w, box.h);
+        paintCtx.fillText(title, box.x, box.y - 14);
+      }
+      img.src = image;
+    })
+  }
+
+  const drawComponents = (paintCtx, onComponent) => {
+    // re-draw on painting canvas layer
+    if (paintCtx === null) {
+      return;
+    }
+
+    paintCtx.clearRect(0, 0, width, height);
+    if (onComponent !== null) {
+      const { boundingBox, title } = onComponent;
+      drawRect(paintCtx, boundingBox, 8, 'red', title); // highlight current component
+      drawSubDefects(paintCtx, onComponent);
+    } else {
+      paintCtx.clearRect(0, 0, width, height);
+      components.forEach(component => {
+        const {
+          boundingBox,
+          title
+        } = component;
+        drawRect(paintCtx, boundingBox, 4, 'orange', title);
+      })
+    }
   }
 
   useEffect(() => {
-    if (canvasRef.current !== null && zoomRef.current !== null) {
-      const ctx = canvasRef.current.getContext('2d');
+    if (bgCanvasRef.current !== null && zoomRef.current !== null) {
+      const ctx = bgCanvasRef.current.getContext('2d');
+      ctx.scale(scale, scale); // scale by background image size
 
+      // ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
       // start drawing
       const backgroundImage = new Image();
       backgroundImage.onload = function() {
-        ctx.drawImage(backgroundImage, 0, 0) // draw background image first
         backgroundImage.style.display = 'none';
-
-        components.forEach(component => {
-          const { boundingBox, title } = component;
-          drawRect(ctx, boundingBox, 2, color(), title);
-        })
+        ctx.beginPath();
+        ctx.drawImage(backgroundImage, 0, 0) // draw background image first
       }
       backgroundImage.src = bgImage;
     }
-  }, [bgImage, components])
+  }, [scale, canvasSize, bgImage])
 
-  // useEffect(() => {
-  //   if (component.title) {
-  //     console.log('select: ', component.title);
-  //   }
-  // }, [component])
+  useEffect(() => {
+    if (paintCanvasRef.current !== null) {
+      const paintCtx = paintCanvasRef.current.getContext('2d');
+      paintCtx.scale(scale, scale);
+      setPaintCtx(paintCtx);
+    }
+  }, [scale, canvasSize]);
+
+  useEffect(() => {
+    drawComponents(paintCtx, null);
+  }, [paintCtx])
+
+  useEffect(() => {
+    const ratio = CANVAS_DISPLAY_WIDTH / width;
+    setScale(ratio);
+    setCanvasSize({
+      width: Math.floor(width * ratio),
+      height: Math.floor(height * ratio)
+    })
+  }, [])
 
   return (
     <>
     <div className={`canvas-container${rectHover ? ' component-on-hover': ''}`}>
       <div className='main'>
-        <canvas ref={canvasRef} height={height} width={width} onMouseMove={zoom} onClick={handleClick} />
+        {canvasSize.width > 0 &&
+          <>
+            <canvas ref={bgCanvasRef} width={canvasSize.width} height={canvasSize.height} style={{ zIndex: '-10' }} />
+            <canvas ref={paintCanvasRef} width={canvasSize.width} height={canvasSize.height} style={{ zIndex: '10' }} onMouseMove={zoom} />
+          </>
+        }
       </div>
       <div className='zoom'>
         <canvas ref={zoomRef} width={300} height={300} />
@@ -112,24 +217,6 @@ const Canvas = props => {
         </div>
       </div>
     </div>
-
-    <Modal
-      basic
-      size='large'
-      closeIcon
-      onClose={() => setOpenModal(false)}
-      onOpen={() => setOpenModal(true)}
-      open={openModal}
-      onClick={() => setOpenModal(false)}
-      className='component-modal'
-    >
-      <Modal.Header>{component.title}</Modal.Header>
-      <Modal.Content image>
-        <div className='component-detail'>
-          <img src={component.image} alt={component.title} />
-        </div>
-      </Modal.Content>
-    </Modal>
     </>
   )
 }

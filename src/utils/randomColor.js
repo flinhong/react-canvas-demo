@@ -1,13 +1,10 @@
 const color = () => {
   const colors = [
-    'aqua',
-    'black',
-    'blue',
-    'brown',
-    'red orange',
-    'blue violet',
-    'fuschia',
-    'tan'
+    'red',
+    'green',
+    'purple',
+    'orange',
+    'blue'
   ];
   return colors[Math.floor(Math.random() * colors.length)]
 }
