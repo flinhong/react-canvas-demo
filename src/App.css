@@ -8,9 +8,13 @@
   width: 100%;
   text-align: center;
   padding: 1rem;
-  display: flex;
+  /* display: flex;
   justify-content: center;
-  align-items: flex-start;
+  align-items: center;
+  flex-direction: column;
+  flex-grow: 1;
+  flex-shrink: 1; */
+  margin: 0 auto;
 
   cursor: crosshair;
 }
@@ -21,16 +25,19 @@
 
 .canvas-container .main {
   width: 100%;
-  position: relative;
-  margin: 0 auto;
 }
 
+/* center in screen */
 .canvas-container .main canvas {
+  display: block;
   position: absolute;
-  top: 0;
-  /* center the canvas */
+  top: 60px;
   left: 50%;
   transform: translateX(-50%);
+}
+
+.canvas-container .positionInfo {
+  width: 100%;
 }
 
 code, kbd, pre {
