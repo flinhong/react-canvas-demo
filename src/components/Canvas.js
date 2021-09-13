@@ -19,7 +19,7 @@ const Canvas = props => {
 
   const mouseMove = (e) => {
     // get real mouse position relative to canvas position
-    const rect = bgCanvasRef.current.getBoundingClientRect()
+    const rect = bgCanvasRef.current.getBoundingClientRect();
     const x = Math.floor((e.clientX - rect.left) / (rect.right - rect.left) * canvasSize.width);
     const y = Math.floor((e.clientY - rect.top) / (rect.bottom - rect.top) * canvasSize.height);
     
@@ -46,14 +46,14 @@ const Canvas = props => {
     return ctx.isPointInPath(rect, x, y);
   }
 
-  const reScaleRect = (boundingBox, need2DPath) => {
+  const reScaleRect = (boundingBox, to2DPath) => {
     const {xmin, xmax, ymin, ymax} = boundingBox;
-    const { width, height } = canvasSize
+    const { width, height } = canvasSize;
     const x = Math.floor((xmin * width) / scale);
     const y = Math.floor((ymin * height) / scale);
     const w = Math.floor(((xmax - xmin) * width) / scale);
     const h = Math.floor(((ymax - ymin) * height) / scale);
-    if (need2DPath) {
+    if (to2DPath) {
       const rect = new Path2D();
       rect.rect(x, y, w, h);
       return rect;
@@ -112,7 +112,7 @@ const Canvas = props => {
 
     if (focusComponent !== null) {
       const { boundingBox, title } = focusComponent;
-      drawRect(paintCtx, boundingBox, 8, 'red', title); // highlight current component
+      drawRect(paintCtx, boundingBox, 8, 'red', title); // highlight current focused component
       drawDetails(paintCtx, focusComponent.details);
     } else {
       components.forEach(component => {
@@ -137,14 +137,14 @@ const Canvas = props => {
 
   useEffect(() => {
     if (bgCanvasRef.current !== null) {
-      const ctx = bgCanvasRef.current.getContext('2d');
-      ctx.scale(scale, scale); // scale by background image size
-      ctx.clearRect(0, 0, width, height);
+      const bgCtx = bgCanvasRef.current.getContext('2d');
+      bgCtx.scale(scale, scale); // scale by background image size
+      bgCtx.clearRect(0, 0, width, height);
 
       const background = new Image();
-      background.onload = function() {
-        ctx.beginPath();
-        ctx.drawImage(background, 0, 0); // draw background image at (0, 0)
+      background.onload = () => {
+        bgCtx.beginPath();
+        bgCtx.drawImage(background, 0, 0); // draw background image at (0, 0)
       }
       background.src = backgroundImage;
     }
@@ -178,6 +178,7 @@ const Canvas = props => {
       <div className='main'>
         {canvasSize.width > 0 &&
           <>
+            {/* 用两个图层，就不用每次重绘背景图片了（会一闪一闪的） */}
             <canvas ref={paintCanvasRef} width={canvasSize.width} height={canvasSize.height} style={{ zIndex: '10' }} onMouseMove={mouseMove} />
             <canvas ref={bgCanvasRef} width={canvasSize.width} height={canvasSize.height} style={{ zIndex: '-10' }} />
           </>
