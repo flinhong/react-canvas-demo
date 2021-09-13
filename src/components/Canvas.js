@@ -4,47 +4,36 @@ import color from '../utils/randomColor';
 const Canvas = props => {
   const CANVAS_DISPLAY_WIDTH = 1200;
 
-  const { background, components } = props.data;
-  const { width, height, image:bgImage } = background;
+  const { backgroundImage, dimension, components } = props.data;
+  const { width, height } = dimension;
 
   const bgCanvasRef = useRef(null);
-  const bgOriginCanvasRef = useRef(null);
   const paintCanvasRef = useRef(null);
-  const zoomRef = useRef(null);
 
   const [scale, setScale] = useState(1.0);
   const [canvasSize, setCanvasSize] = useState({ width:0, height:0 });
   const [paintCtx, setPaintCtx] = useState(null);
-  const [component, setComponent] = useState({});
   const [rectHover, setRectHover] = useState(false);
 
-  const zoom = (e) => {
-    // get real mouse position relative to canvas layout
+  const mouseMove = (e) => {
+    // get real mouse position relative to canvas position
     const rect = bgCanvasRef.current.getBoundingClientRect()
     const x = Math.floor((e.clientX - rect.left) / (rect.right - rect.left) * canvasSize.width);
     const y = Math.floor((e.clientY - rect.top) / (rect.bottom - rect.top) * canvasSize.height);
     
-    // console.log("x&y: ", `${x} & ${y}`);
-    const zoomCtx = zoomRef.current.getContext('2d');
+    console.log("x&y: ", `${x} & ${y}`);
 
-    zoomCtx.imageSmoothingEnabled = true;
-    // scale mouse position (+- 15 px) (30*30 px) to 300*300 px in zoom div
-    const px = 15;
-    zoomCtx.drawImage(bgOriginCanvasRef.current, Math.abs(x - px) / scale, Math.abs(y - px) / scale, px*2 / scale, px*2 / scale, 0, 0, 300, 300);
+    // const currentRect = components.filter((component) => {
+    //   return isMouseInRect(x, y, component.boundingBox)
+    // });
 
-    const currentRect = components.filter((component) => {
-      return isMouseInRect(x, y, component.boundingBox)
-    });
-    
-    if (currentRect.length > 0) {
-      setComponent(currentRect[0]); // TODO: further calc size
-      setRectHover(true);
-      if (paintCtx !== null) drawComponents(paintCtx, currentRect[0]);
-    } else {
-      setComponent({});
-      setRectHover(false);
-      if (paintCtx !== null) drawComponents(paintCtx, null);
-    }
+    // if (currentRect.length > 0) {
+    //   setRectHover(true);
+    //   if (paintCtx !== null) drawComponents(paintCtx, currentRect[0]);
+    // } else {
+    //   setRectHover(false);
+    //   if (paintCtx !== null) drawComponents(paintCtx, null);
+    // }
   }
 
   // just for regular rectangle without tilt
@@ -141,7 +130,9 @@ const Canvas = props => {
       return;
     }
 
+    // clear and repaint
     paintCtx.clearRect(0, 0, width, height);
+
     if (onComponent !== null) {
       const { boundingBox, title } = onComponent;
       drawRect(paintCtx, boundingBox, 8, 'red', title); // highlight current component
@@ -159,39 +150,32 @@ const Canvas = props => {
   }
 
   useEffect(() => {
-    if (bgCanvasRef.current !== null && zoomRef.current !== null) {
+    if (bgCanvasRef.current !== null) {
       const ctx = bgCanvasRef.current.getContext('2d');
       ctx.scale(scale, scale); // scale by background image size
 
       // ctx.clearRect(0, 0, canvasSize.width, canvasSize.height);
       // start drawing
-      const backgroundImage = new Image();
-      backgroundImage.onload = function() {
+      const background = new Image();
+      background.onload = function() {
         // backgroundImage.style.display = 'none';
         ctx.beginPath();
-        ctx.drawImage(backgroundImage, 0, 0); // draw background image first
-
-        const bgOriginCtx = bgOriginCanvasRef.current.getContext('2d');
-        bgOriginCtx.beginPath();
-        bgOriginCtx.drawImage(backgroundImage, 0, 0);
+        ctx.drawImage(background, 0, 0); // draw background image at (0, 0)
       }
-      backgroundImage.src = bgImage;
+      background.src = backgroundImage;
     }
-  }, [scale, canvasSize, bgImage])
+  }, [scale, canvasSize, backgroundImage])
+
+  // useEffect(() => {
+  //   if (paintCanvasRef.current !== null) {
+  //     const paintCtx = paintCanvasRef.current.getContext('2d');
+  //     paintCtx.scale(scale, scale);
+  //     setPaintCtx(paintCtx);
+  //   }
+  // }, [scale, canvasSize]);
 
   useEffect(() => {
-    if (paintCanvasRef.current !== null) {
-      const paintCtx = paintCanvasRef.current.getContext('2d');
-      paintCtx.scale(scale, scale);
-      setPaintCtx(paintCtx);
-    }
-  }, [scale, canvasSize]);
-
-  useEffect(() => {
-    drawComponents(paintCtx, null);
-  }, [paintCtx])
-
-  useEffect(() => {
+    // get scale ration when component mounted
     const ratio = CANVAS_DISPLAY_WIDTH / width;
     setScale(ratio);
     setCanvasSize({
@@ -207,21 +191,9 @@ const Canvas = props => {
         {canvasSize.width > 0 &&
           <>
             <canvas ref={bgCanvasRef} width={canvasSize.width} height={canvasSize.height} style={{ zIndex: '-10' }} />
-            <canvas ref={paintCanvasRef} width={canvasSize.width} height={canvasSize.height} style={{ zIndex: '10' }} onMouseMove={zoom} />
-            <canvas ref={bgOriginCanvasRef} width={width} height={height} style={{ zIndex: '-20', display: 'none' }} />
+            <canvas ref={paintCanvasRef} width={canvasSize.width} height={canvasSize.height} style={{ zIndex: '10' }} onMouseMove={mouseMove} />
           </>
         }
-      </div>
-      <div className='zoom'>
-        <canvas ref={zoomRef} width={300} height={300} />
-        <div className='info'>
-          {component.title &&
-            <pre>
-              hover on: 
-              <code>{JSON.stringify(component, null, 2)}</code>
-            </pre>
-          }
-        </div>
       </div>
     </div>
     </>

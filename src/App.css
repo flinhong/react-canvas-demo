@@ -9,7 +9,7 @@
   text-align: center;
   padding: 1rem;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: flex-start;
 
   cursor: crosshair;
@@ -20,22 +20,17 @@
 }
 
 .canvas-container .main {
-  width: 80%;
+  width: 100%;
   position: relative;
+  margin: 0 auto;
 }
 
 .canvas-container .main canvas {
   position: absolute;
   top: 0;
-  left: 0;
-}
-
-.canvas-container .zoom {
-  width: 20%;
-}
-
-.info {
-  text-align: left;
+  /* center the canvas */
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 code, kbd, pre {
